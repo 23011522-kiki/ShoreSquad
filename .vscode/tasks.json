@@ -1,0 +1,19 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Launch ShoreSquad with Live Server",
+			"type": "shell",
+			"command": "code",
+			"args": [
+				"--new-window",
+				".",
+				"--extensionDevelopmentPath",
+				"."
+			],
+			"group": "build",
+			"isBackground": true,
+			"problemMatcher": []
+		}
+	]
+}

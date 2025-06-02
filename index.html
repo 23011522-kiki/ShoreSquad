@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Rally your crew, track weather, and hit the next beach cleanup with ShoreSquad!">
+    <meta name="keywords" content="beach cleanup, environmental, eco-friendly, weather, maps, community">
+    <title>ShoreSquad - Rally Your Crew for Beach Cleanups</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+</head>
+<body>
+    <header class="header" role="banner">
+        <nav class="nav" role="navigation" aria-label="Main navigation">
+            <div class="nav-container">
+                <div class="logo">
+                    <h1>🏄‍♂️ ShoreSquad</h1>
+                </div>
+                <ul class="nav-menu" role="list">
+                    <li><a href="#home" aria-current="page">Home</a></li>
+                    <li><a href="#cleanups">Cleanups</a></li>
+                    <li><a href="#weather">Weather</a></li>
+                    <li><a href="#squad">My Squad</a></li>
+                </ul>
+                <button class="nav-toggle" aria-label="Toggle navigation menu" aria-expanded="false">
+                    <span class="hamburger"></span>
+                </button>
+            </div>
+        </nav>
+    </header>
+
+    <main role="main">
+        <!-- Hero Section -->
+        <section id="home" class="hero" aria-labelledby="hero-title">
+            <div class="hero-content">
+                <h2 id="hero-title" class="hero-title">Rally Your Crew, Clean the Shore!</h2>
+                <p class="hero-subtitle">Track weather, find cleanup events, and make eco-action fun with your squad</p>                <div class="hero-actions">
+                    <button class="btn btn-primary" id="join-cleanup-btn">Join Next Cleanup</button>
+                    <button class="btn btn-secondary" id="create-event-btn">Create Event</button>
+                </div>
+            </div>            <div class="hero-visual">
+                <div class="map-container" role="img" aria-label="Interactive map showing next beach cleanup at Pasir Ris">
+                    <iframe 
+                        src="https://maps.google.com/maps?q=1.381497,103.955574&hl=en&z=15&output=embed"
+                        width="100%" 
+                        height="300" 
+                        style="border:0; border-radius: 12px;" 
+                        allowfullscreen="" 
+                        loading="lazy" 
+                        referrerpolicy="no-referrer-when-downgrade"
+                        title="Next Beach Cleanup Location - Pasir Ris"
+                        aria-describedby="map-description">
+                    </iframe>
+                    <div id="map-description" class="sr-only">
+                        Google Maps showing the next beach cleanup location at Pasir Ris, Singapore. 
+                        Coordinates: 1.381497, 103.955574. A red marker indicates the cleanup starting point.
+                    </div>
+                    <div class="map-overlay">
+                        <div class="cleanup-info">
+                            <h3>🏖️ Next Cleanup: Pasir Ris Beach</h3>
+                            <p>📍 Meeting Point: Street View Asia</p>
+                            <p>📅 This Weekend • 9:00 AM</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Weather Section -->
+        <section id="weather" class="weather-section" aria-labelledby="weather-title">
+            <div class="container">
+                <h2 id="weather-title" class="section-title">Weather Check</h2>
+                <div class="weather-card">
+                    <div class="weather-current" id="weather-current">
+                        <div class="loading" role="status" aria-live="polite">Loading weather data...</div>
+                    </div>
+                    <div class="weather-forecast" id="weather-forecast" aria-label="3-day weather forecast">
+                        <!-- Weather forecast will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Cleanup Events Section -->
+        <section id="cleanups" class="cleanups-section" aria-labelledby="cleanups-title">
+            <div class="container">
+                <h2 id="cleanups-title" class="section-title">Upcoming Beach Cleanups</h2>
+                <div class="events-grid" id="events-grid" role="list">
+                    <!-- Events will be populated by JavaScript -->
+                </div>
+                <button class="btn btn-primary load-more" id="load-more-events">Load More Events</button>
+            </div>
+        </section>
+
+        <!-- Squad Section -->
+        <section id="squad" class="squad-section" aria-labelledby="squad-title">
+            <div class="container">
+                <h2 id="squad-title" class="section-title">Your Squad</h2>
+                <div class="squad-stats">
+                    <div class="stat-card">
+                        <span class="stat-number" id="cleanups-joined">0</span>
+                        <span class="stat-label">Cleanups Joined</span>
+                    </div>                    <div class="stat-card">
+                        <span class="stat-number" id="trash-collected">0</span>
+                        <span class="stat-label">Kilograms Collected</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-number" id="squad-members">0</span>
+                        <span class="stat-label">Squad Members</span>
+                    </div>
+                </div>
+                <div class="squad-actions">
+                    <button class="btn btn-accent" id="invite-friends-btn">Invite Friends</button>
+                    <button class="btn btn-outline" id="share-progress-btn">Share Progress</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer" role="contentinfo">
+        <div class="container">
+            <p>&copy; 2025 ShoreSquad. Making waves for a cleaner planet! 🌊</p>
+            <div class="footer-links">
+                <a href="#about">About</a>
+                <a href="#privacy">Privacy</a>
+                <a href="#contact">Contact</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="js/app.js"></script>
+</body>
+</html>
