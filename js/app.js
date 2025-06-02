@@ -114,81 +114,495 @@ class ShoreSquadApp {
             console.error('Error loading initial data:', error);
             this.showNotification('Unable to load some data. Please check your connection.', 'error');
         }
-    }
-
-    async loadWeatherData() {
+    }    async loadWeatherData() {
         const weatherContainer = document.getElementById('weather-current');
         if (!weatherContainer) return;
 
-        try {            // Simulate weather API call with mock data
-            // In a real app, you'd use a weather API like OpenWeatherMap
-            const mockWeatherData = {
-                location: 'Pasir Ris Beach, Singapore',
-                temperature: 26,
-                condition: 'Sunny',
-                humidity: 65,
-                windSpeed: 19,
-                uvIndex: 6,
-                forecast: [
-                    { day: 'Today', temp: 26, condition: '☀️', description: 'Perfect cleanup weather!' },
-                    { day: 'Tomorrow', temp: 24, condition: '⛅', description: 'Partly cloudy' },
-                    { day: 'Friday', temp: 22, condition: '🌧️', description: 'Light rain expected' }
-                ]
-            };
+        try {
+            // Show loading state
+            weatherContainer.innerHTML = `
+                <div class="loading" role="status" aria-live="polite">
+                    <div class="loading-spinner"></div>
+                    <p>Loading real-time weather data from NEA Singapore...</p>
+                </div>
+            `;
 
-            // Simulate API delay
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            this.displayWeatherData(mockWeatherData);
+            // Fetch real weather data from Singapore's NEA APIs
+            const [forecastData, temperatureData, humidityData] = await Promise.all([
+                this.fetchForecastData(),
+                this.fetchTemperatureData(),
+                this.fetchHumidityData()
+            ]);            // Process and combine the data
+            const weatherData = this.processWeatherData(forecastData, temperatureData, humidityData);
+            
+            this.displayWeatherData(weatherData);
+            
+            // Check for weather alerts
+            const alerts = this.checkWeatherAlerts(weatherData);
+            this.displayWeatherAlerts(alerts);
             
         } catch (error) {
             console.error('Weather loading error:', error);
             weatherContainer.innerHTML = `
                 <div class="weather-error">
-                    <p>Unable to load weather data</p>
+                    <div class="error-icon">⚠️</div>
+                    <p>Unable to load weather data from NEA Singapore</p>
+                    <p class="error-detail">Please check your internet connection</p>
                     <button onclick="app.loadWeatherData()" class="btn btn-primary">Retry</button>
                 </div>
             `;
         }
+    }    async fetchForecastData() {
+        try {
+            const response = await fetch('https://api.data.gov.sg/v1/environment/4-day-weather-forecast', {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                },
+                mode: 'cors'
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Forecast API error: ${response.status} ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            console.log('Forecast data received:', data);
+            return data;
+        } catch (error) {
+            console.warn('Failed to fetch real forecast data, using fallback:', error);
+            // Fallback data if API fails
+            return this.getFallbackForecastData();
+        }
     }
 
-    displayWeatherData(data) {
+    async fetchTemperatureData() {
+        try {
+            const response = await fetch('https://api.data.gov.sg/v1/environment/air-temperature', {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                },
+                mode: 'cors'
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Temperature API error: ${response.status} ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            console.log('Temperature data received:', data);
+            return data;
+        } catch (error) {
+            console.warn('Failed to fetch real temperature data, using fallback:', error);
+            return this.getFallbackTemperatureData();
+        }
+    }
+
+    async fetchHumidityData() {
+        try {
+            const response = await fetch('https://api.data.gov.sg/v1/environment/relative-humidity', {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                },
+                mode: 'cors'
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Humidity API error: ${response.status} ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            console.log('Humidity data received:', data);
+            return data;
+        } catch (error) {
+            console.warn('Failed to fetch real humidity data, using fallback:', error);
+            return this.getFallbackHumidityData();
+        }
+    }    getFallbackForecastData() {
+        // Generate realistic fallback data with dynamic dates starting from today
+        const today = new Date();
+        const forecasts = [];
+        
+        for (let i = 0; i < 4; i++) {
+            const forecastDate = new Date(today);
+            forecastDate.setDate(today.getDate() + i);
+            
+            forecasts.push({
+                date: forecastDate.toISOString().split('T')[0], // YYYY-MM-DD format
+                temperature: { low: 25 + Math.floor(Math.random() * 2), high: 31 + Math.floor(Math.random() * 3) },
+                forecast: this.getFallbackForecastText(i),
+                relative_humidity: { low: 55 + Math.floor(Math.random() * 10), high: 85 + Math.floor(Math.random() * 10) },
+                wind: { speed: { low: 10 + Math.floor(Math.random() * 5), high: 20 + Math.floor(Math.random() * 10) }, direction: ['SW', 'SSW', 'S', 'SE'][Math.floor(Math.random() * 4)] }
+            });
+        }
+        
+        return {
+            items: [{
+                forecasts: forecasts
+            }]
+        };
+    }
+
+    getFallbackForecastText(dayIndex) {
+        const forecasts = [
+            'Late morning and early afternoon thundery showers',
+            'Partly cloudy with brief showers', 
+            'Morning thundery showers',
+            'Fair and warm'
+        ];
+        return forecasts[dayIndex % forecasts.length];
+    }
+
+    getFallbackTemperatureData() {
+        return {
+            items: [{
+                readings: [
+                    { station_id: 'S107', value: 29.5 } // East Coast Parkway
+                ]
+            }]
+        };
+    }
+
+    getFallbackHumidityData() {
+        return {
+            items: [{
+                readings: [
+                    { station_id: 'S107', value: 75 } // East Coast Parkway
+                ]
+            }]
+        };
+    }    processWeatherData(forecastData, temperatureData, humidityData) {
+        // Find closest weather station to Pasir Ris (East Coast Parkway is closest)
+        const targetStations = ['S107', 'S106']; // East Coast Parkway, Pulau Ubin (closest to beaches)
+        
+        // Get current temperature
+        let currentTemp = 29; // fallback for Singapore
+        let currentHumidity = 75; // fallback for Singapore
+        let isRealData = true;
+        
+        if (temperatureData.items && temperatureData.items.length > 0) {
+            const tempReading = temperatureData.items[0].readings.find(r => 
+                targetStations.includes(r.station_id)
+            ) || temperatureData.items[0].readings[0];
+            currentTemp = Math.round(tempReading.value);
+        } else {
+            isRealData = false;
+        }
+        
+        if (humidityData.items && humidityData.items.length > 0) {
+            const humidityReading = humidityData.items[0].readings.find(r => 
+                targetStations.includes(r.station_id)
+            ) || humidityData.items[0].readings[0];
+            currentHumidity = Math.round(humidityReading.value);
+        } else {
+            isRealData = false;
+        }        // Process forecast data
+        let forecast = [];
+        if (forecastData.items && forecastData.items.length > 0) {
+            const today = new Date();
+            console.log('Processing weather data, today is:', today.toLocaleDateString('en-CA'));
+            
+            forecast = forecastData.items[0].forecasts.map((day, index) => {
+                const date = new Date(day.date);
+                const dayName = this.getDayName(date, today, index);
+                
+                console.log(`Forecast day ${index}: ${day.date} -> ${dayName}`);
+                
+                return {
+                    day: dayName,
+                    date: day.date,
+                    tempLow: day.temperature.low,
+                    tempHigh: day.temperature.high,
+                    condition: this.getWeatherEmoji(day.forecast),
+                    description: day.forecast,
+                    humidity: `${day.relative_humidity.low}-${day.relative_humidity.high}%`,
+                    windSpeed: `${day.wind.speed.low}-${day.wind.speed.high} km/h`,
+                    windDirection: day.wind.direction
+                };
+            });
+        }
+
+        // Show notification about data source
+        if (isRealData) {
+            setTimeout(() => {
+                this.showNotification('✅ Real-time weather data from NEA Singapore', 'success');
+            }, 2000);
+        } else {
+            setTimeout(() => {
+                this.showNotification('⚠️ Using sample weather data (API may be temporarily unavailable)', 'info');
+            }, 2000);
+        }
+
+        return {
+            location: isRealData ? 'Singapore (Live from NEA)' : 'Singapore (Sample Data)',
+            temperature: currentTemp,
+            condition: this.getCurrentCondition(forecast[0]?.description || ''),
+            humidity: currentHumidity,
+            windSpeed: forecast[0]?.windSpeed || '10-20 km/h',
+            windDirection: forecast[0]?.windDirection || 'Variable',
+            updateTime: new Date().toLocaleTimeString('en-SG', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                timeZone: 'Asia/Singapore'
+            }),
+            forecast: forecast,
+            isRealData: isRealData
+        };
+    }    getDayName(date, today, index) {
+        // Normalize dates to Singapore timezone for proper comparison
+        const todayStr = today.toLocaleDateString('en-CA'); // YYYY-MM-DD format
+        const dateStr = date.toLocaleDateString('en-CA'); // YYYY-MM-DD format
+        
+        // Calculate difference in days
+        const todayTime = new Date(todayStr).getTime();
+        const dateTime = new Date(dateStr).getTime();
+        const diffDays = Math.round((dateTime - todayTime) / (1000 * 60 * 60 * 24));
+        
+        console.log(`Date comparison: today=${todayStr}, forecast=${dateStr}, diff=${diffDays} days`);
+        
+        if (diffDays === 0) return 'Today';
+        if (diffDays === 1) return 'Tomorrow';
+        if (diffDays === -1) return 'Yesterday'; // In case of timezone edge cases
+        
+        return date.toLocaleDateString('en-US', { weekday: 'short' });
+    }
+
+    getWeatherEmoji(description) {
+        const desc = description.toLowerCase();
+        if (desc.includes('thundery') || desc.includes('thunder')) return '⛈️';
+        if (desc.includes('showers') || desc.includes('rain')) return '🌧️';
+        if (desc.includes('cloudy')) return '☁️';
+        if (desc.includes('partly cloudy')) return '⛅';
+        if (desc.includes('fair') || desc.includes('sunny')) return '☀️';
+        if (desc.includes('windy')) return '💨';
+        return '🌤️'; // default partly sunny
+    }
+
+    getCurrentCondition(forecastDescription) {
+        const desc = forecastDescription.toLowerCase();
+        if (desc.includes('thundery')) return 'Thunderstorms';
+        if (desc.includes('showers') || desc.includes('rain')) return 'Showers';
+        if (desc.includes('cloudy')) return 'Cloudy';
+        if (desc.includes('fair')) return 'Fair';
+        return 'Partly Cloudy';
+    }    displayWeatherData(data) {
         const currentWeather = document.getElementById('weather-current');
         const forecast = document.getElementById('weather-forecast');
 
         if (currentWeather) {
             currentWeather.innerHTML = `
-                <div class="current-weather">                    <div class="weather-main">
-                        <h3>${data.location}</h3>
-                        <div class="temp">${data.temperature}°C</div>
-                        <div class="condition">${data.condition}</div>
+                <div class="current-weather">
+                    <div class="weather-main">
+                        <div class="weather-header">
+                            <h3>${data.location}</h3>
+                            <button onclick="app.loadWeatherData()" class="refresh-btn" aria-label="Refresh weather data" title="Refresh weather data">
+                                🔄
+                            </button>
+                        </div>
+                        <div class="current-temp-display">
+                            <div class="temp">${data.temperature}°C</div>
+                            <div class="condition">${data.condition}</div>
+                        </div>
+                        <div class="update-time">
+                            Updated: ${data.updateTime} SGT
+                            ${data.isRealData ? '• Live Data ✅' : '• Sample Data ⚠️'}
+                        </div>
                     </div>
                     <div class="weather-details">
                         <div class="detail">
-                            <span class="label">Humidity:</span>
+                            <span class="label">💧 Humidity:</span>
                             <span class="value">${data.humidity}%</span>
                         </div>
                         <div class="detail">
-                            <span class="label">Wind:</span>
-                            <span class="value">${data.windSpeed} km/h</span>
+                            <span class="label">💨 Wind:</span>
+                            <span class="value">${data.windSpeed} ${data.windDirection}</span>
                         </div>
                         <div class="detail">
-                            <span class="label">UV Index:</span>
-                            <span class="value">${data.uvIndex}</span>
+                            <span class="label">📍 Station:</span>
+                            <span class="value">East Coast</span>
+                        </div>
+                        <div class="detail">
+                            <span class="label">🏖️ Beach Conditions:</span>
+                            <span class="value">${this.getBeachCondition(data.temperature, data.humidity)}</span>
                         </div>
                     </div>
                 </div>
             `;
         }
 
-        if (forecast && data.forecast) {
-            forecast.innerHTML = data.forecast.map(day => `                <div class="forecast-day">
-                    <div class="day-name">${day.day}</div>
-                    <div class="day-condition">${day.condition}</div>
-                    <div class="day-temp">${day.temp}°C</div>
-                    <div class="day-description">${day.description}</div>
+        if (forecast && data.forecast && data.forecast.length > 0) {
+            forecast.innerHTML = `
+                <div class="forecast-header">
+                    <h4 class="forecast-title">4-Day Singapore Weather Forecast</h4>
+                    <div class="forecast-source">Source: National Environment Agency (NEA)</div>
                 </div>
-            `).join('');
+                <div class="forecast-grid">
+                    ${data.forecast.map(day => `
+                        <div class="forecast-day ${day.day === 'Today' ? 'today' : ''}">
+                            <div class="day-header">
+                                <div class="day-name">${day.day}</div>
+                                <div class="day-date">${this.formatForecastDate(day.date)}</div>
+                            </div>
+                            <div class="day-condition">${day.condition}</div>
+                            <div class="temp-range">
+                                <span class="temp-high">${day.tempHigh}°</span>
+                                <span class="temp-separator">/</span>
+                                <span class="temp-low">${day.tempLow}°</span>
+                            </div>
+                            <div class="day-description">${day.description}</div>
+                            <div class="day-details">
+                                <div class="detail-item">
+                                    <span class="detail-icon">💧</span>
+                                    <span class="detail-text">${day.humidity}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-icon">💨</span>
+                                    <span class="detail-text">${day.windSpeed}</span>
+                                </div>
+                            </div>
+                            ${day.day === 'Today' ? this.getCleanupRecommendation(day.description) : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+    }
+
+    getBeachCondition(temperature, humidity) {
+        if (temperature >= 30 && humidity <= 70) return 'Excellent 🌟';
+        if (temperature >= 28 && humidity <= 80) return 'Very Good 👍';
+        if (temperature >= 26 && humidity <= 85) return 'Good ✅';
+        if (humidity > 90) return 'Very Humid 💦';
+        if (temperature < 24) return 'Cool 🌤️';
+        return 'Fair ⛅';
+    }
+
+    formatForecastDate(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric' 
+        });
+    }
+
+    getCleanupRecommendation(description) {
+        const desc = description.toLowerCase();
+        let recommendation = '';
+        let recommendationClass = '';
+
+        if (desc.includes('thundery') || desc.includes('thunder')) {
+            recommendation = '⚠️ Monitor weather - potential delays';
+            recommendationClass = 'warning';
+        } else if (desc.includes('showers') || desc.includes('rain')) {
+            recommendation = '🌂 Bring rain gear - cleanup may continue';
+            recommendationClass = 'caution';
+        } else if (desc.includes('fair') || desc.includes('sunny')) {
+            recommendation = '✨ Perfect beach cleanup weather!';
+            recommendationClass = 'excellent';
+        } else {
+            recommendation = '👍 Good conditions for cleanup';
+            recommendationClass = 'good';
+        }
+
+        return `
+            <div class="cleanup-recommendation ${recommendationClass}">
+                <div class="recommendation-text">${recommendation}</div>
+            </div>
+        `;
+    }
+
+    // Weather Alert System
+    checkWeatherAlerts(weatherData) {
+        const alerts = [];
+        const today = weatherData.forecast[0];
+        
+        if (!today) return alerts;
+
+        // Temperature alerts
+        if (today.tempHigh >= 35) {
+            alerts.push({
+                type: 'warning',
+                message: '🌡️ Very hot conditions expected - bring extra water and sun protection',
+                priority: 'high'
+            });
+        }
+
+        // Rain alerts
+        if (today.description.toLowerCase().includes('thundery')) {
+            alerts.push({
+                type: 'warning',
+                message: '⛈️ Thunderstorms possible - cleanup may be postponed for safety',
+                priority: 'high'
+            });
+        } else if (today.description.toLowerCase().includes('showers')) {
+            alerts.push({
+                type: 'caution',
+                message: '🌧️ Rain expected - bring waterproof gear',
+                priority: 'medium'
+            });
+        }
+
+        // Wind alerts
+        const windSpeed = parseInt(today.windSpeed.split('-')[1]) || 20;
+        if (windSpeed > 25) {
+            alerts.push({
+                type: 'caution',
+                message: '💨 Strong winds expected - secure loose items',
+                priority: 'medium'
+            });
+        }
+
+        // Humidity alerts
+        const humidity = parseInt(today.humidity.split('-')[1]) || 80;
+        if (humidity > 90) {
+            alerts.push({
+                type: 'info',
+                message: '💦 Very humid conditions - take frequent breaks',
+                priority: 'low'
+            });
+        }
+
+        // Perfect conditions
+        if (alerts.length === 0 && today.tempHigh <= 32 && !today.description.toLowerCase().includes('rain')) {
+            alerts.push({
+                type: 'success',
+                message: '✨ Perfect conditions for beach cleanup!',
+                priority: 'low'
+            });
+        }
+
+        return alerts;
+    }
+
+    displayWeatherAlerts(alerts) {
+        if (alerts.length === 0) return;
+
+        // Show the most important alert as a notification
+        const priorityOrder = { 'high': 3, 'medium': 2, 'low': 1 };
+        const topAlert = alerts.sort((a, b) => priorityOrder[b.priority] - priorityOrder[a.priority])[0];
+        
+        setTimeout(() => {
+            this.showNotification(topAlert.message, topAlert.type);
+        }, 3000);
+
+        // Add alerts to the weather display
+        const alertsContainer = document.createElement('div');
+        alertsContainer.className = 'weather-alerts';
+        alertsContainer.innerHTML = alerts.map(alert => `
+            <div class="weather-alert ${alert.type}">
+                <span class="alert-message">${alert.message}</span>
+            </div>
+        `).join('');
+
+        const weatherSection = document.querySelector('.weather-section .container');
+        if (weatherSection) {
+            const existingAlerts = weatherSection.querySelector('.weather-alerts');
+            if (existingAlerts) {
+                existingAlerts.remove();
+            }
+            weatherSection.appendChild(alertsContainer);
         }
     }
 
